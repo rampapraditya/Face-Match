@@ -4,6 +4,7 @@ import sqlite3
 import cv2
 import numpy as np
 import face_recognition
+import time
 
 def listUsers():
     conn = sqlite3.connect('facedb.db')
@@ -136,7 +137,10 @@ def findEncodings(images):
 
     return encodeList
 
+
 def menu2():
+
+    TIMER = int(30)
 
     images = []
     classNames = []
@@ -155,35 +159,78 @@ def menu2():
     print("Encoding Complete")
 
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    while True:
-        success, img = cap.read()
-        imgS = cv2.resize(img, (0, 0), None, 0.25, 0.25)
-        imgS = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
 
-        facesCurFrame = face_recognition.face_locations(imgS)
-        encodesCurFrame = face_recognition.face_encodings(imgS, facesCurFrame)
+    kondisi_capture = True
+    while kondisi_capture:
+        try:
+            prev = time.time()
+            while TIMER >= 0:
+                success, img = cap.read()
 
-        for encodeFace, faceLoc in zip(encodesCurFrame, facesCurFrame):
-            matches = face_recognition.compare_faces(encodeListKnown, encodeFace)
-            faceDis = face_recognition.face_distance(encodeListKnown, encodeFace)
-            matchIndex = np.argmin(faceDis)
+                imgS = cv2.resize(img, (0, 0), None, 0.25, 0.25)
+                imgS = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
 
-            if matches[matchIndex]:
-                name = classNames[matchIndex].upper()
+                facesCurFrame = face_recognition.face_locations(imgS)
+                encodesCurFrame = face_recognition.face_encodings(imgS, facesCurFrame)
+
+                wajah = 0;
+                keranjang_wajah = []
+
+                for encodeFace, faceLoc in zip(encodesCurFrame, facesCurFrame):
+                    matches = face_recognition.compare_faces(encodeListKnown, encodeFace)
+                    faceDis = face_recognition.face_distance(encodeListKnown, encodeFace)
+                    matchIndex = np.argmin(faceDis)
+
+                    wajah += 1
+
+                    if matches[matchIndex]:
+                        name = classNames[matchIndex].upper()
+                    else:
+                        name = "Unknown"
+
+                    keranjang_wajah.append(name)
+
+                    y1, x2, y2, x1 = faceLoc
+                    y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
+                    cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.rectangle(img, (x1, y2 - 35), (x2, y2), (0, 255, 0), cv2.FILLED)
+                    cv2.putText(img, name, (x1 + 6, y2 - 6), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
+
+                    if wajah > 1:
+                        # Eksekusi jika wajah lebih dari 1
+                        panjangdata = len(keranjang_wajah)
+                        for index in range(0, panjangdata, +1):
+                            if keranjang_wajah[0] == keranjang_wajah[index]:
+                                print("Wajah Sama")
+                                TIMER = 0
+
+                            else:
+                                print("Wajah Beda")
+                                TIMER = 0
+
+
+                cv2.putText(img, str(TIMER), (50, 50), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
+                cv2.imshow('Webcam', img)
+                cv2.waitKey(125)
+
+
+
+                # current time
+                cur = time.time()
+
+                if cur - prev >= 1:
+                    prev = cur
+                    TIMER = TIMER - 1
+
             else:
-                name = "Unknown"
-
-            y1, x2, y2, x1 = faceLoc
-            y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
-            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.rectangle(img, (x1, y2 - 35), (x2, y2), (0, 255, 0), cv2.FILLED)
-            cv2.putText(img, name, (x1 + 6, y2 - 6), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
-
-        cv2.imshow('Webcam', img)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            cap.release();
-            cv2.destroyAllWindows();
-            break;
+                success, img = cap.read()
+                cv2.imshow('Webcam', img)
+                cv2.waitKey(5)
+                kondisi_capture = False
+                cap.release();
+                cv2.destroyAllWindows();
+        except Exception:
+            pass
 
 kondisi = True
 while kondisi:
